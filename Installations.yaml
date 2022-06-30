@@ -1,0 +1,59 @@
+- name: Ansible NGINX Installation
+  hosts: edward_web_server
+  remote_user: ubuntu
+  become: yes
+
+  tasks:
+
+  - name: Updating the Server 
+    apt:
+      update_cache: yes
+
+  - name: Packages Install NGINX 
+    apt:
+      name: nginx
+      state: latest
+
+  - name: Running the service
+    service:
+      name: nginx
+      state: restarted
+      enabled: yes
+
+  - name: Install MySQL
+  hosts: mysql-service
+  tasks:
+    - name: Install MySQL
+      action: $ansible_pkg_mgr pkg=mysql-server state=installed
+    - name: Add Python MySQL DB
+      action: $ansible_pkg_mgr pkg=python-mysqldb state=installed
+
+- name: Configure MySQL
+  hosts: edward_web_server
+  tasks:
+    - name: Configure my.cnf
+      copy: src=./files/my.cnf
+            dest=/etc/mysql/my.cnf
+            owner=root
+            group=root
+            mode=0640
+      notify:
+        - restart mysql
+    
+    - name: Add mysql-user
+      mysql_user: name=edward
+                  password=password123
+                  priv=*.*:ALL
+                  state=present
+      notify:
+        - start mysql
+
+  handlers:
+    - name: start mysql
+      service: name=mysql
+               enabled=yes
+               state=started
+    - name: restart mysql
+      service: name=mysql
+               enabled=yes
+               state=restarted
